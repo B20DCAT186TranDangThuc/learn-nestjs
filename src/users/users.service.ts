@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Users } from './users.entity';
 import { Repository } from 'typeorm';
@@ -15,12 +21,15 @@ export class UsersService {
 
   async getByEmail(email: string) {
     const user = await this.usersRepository.findOne({
-      where: {email},
+      where: { email },
     });
     if (user) {
       return user;
     }
-    throw new HttpException('User with this email does not exist', HttpStatus.NOT_FOUND);
+    throw new HttpException(
+      'User with this email does not exist',
+      HttpStatus.NOT_FOUND,
+    );
   }
 
   async create(userData: CreateUserDto) {
@@ -36,7 +45,10 @@ export class UsersService {
     if (user) {
       return user;
     }
-    throw new HttpException('User with this id does not exist', HttpStatus.NOT_FOUND);
+    throw new HttpException(
+      'User with this id does not exist',
+      HttpStatus.NOT_FOUND,
+    );
   }
 
   async addAvatar(userId: number, imageBuffer: Buffer, fileName: string) {
@@ -44,14 +56,17 @@ export class UsersService {
     if (user.avatar) {
       await this.usersRepository.update(userId, {
         ...user,
-        avatar: null
+        avatar: null,
       });
       await this.fileService.deletePublicFile(user.avatar.id);
     }
-    const avatar = await this.fileService.uploadPublicFile(imageBuffer, fileName);
+    const avatar = await this.fileService.uploadPublicFile(
+      imageBuffer,
+      fileName,
+    );
     await this.usersRepository.update(userId, {
       ...user,
-      avatar
+      avatar,
     });
     return avatar;
   }
@@ -62,9 +77,40 @@ export class UsersService {
     if (fileId) {
       await this.usersRepository.update(userId, {
         ...user,
-        avatar: null
+        avatar: null,
       });
-      await this.fileService.deletePublicFile(fileId)
+      await this.fileService.deletePublicFile(fileId);
     }
+  }
+
+  async addPrivateFile(userId: number, imageBuffer: Buffer, filename: string) {
+    return this.fileService.uploadPrivateFile(imageBuffer, userId, filename);
+  }
+
+  async getPrivateFile(userId: number, fileId: number) {
+    const file = await this.fileService.getPrivateFile(fileId);
+    if (file.info.owner.id === userId) {
+      return file;
+    }
+    throw new UnauthorizedException();
+  }
+
+  async getAllPrivateFiles(userId: number) {
+    const userWitthFiles = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ['files'],
+    });
+    if (userWitthFiles) {
+      return Promise.all(
+        userWitthFiles.files.map(async (file) => {
+          const url = await this.fileService.generatePresignedUrl(file.key);
+          return {
+            ...file,
+            url,
+          };
+        }),
+      );
+    }
+    throw new NotFoundException('User with this id does not exist');
   }
 }
