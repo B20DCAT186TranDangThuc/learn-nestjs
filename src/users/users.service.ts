@@ -1,24 +1,29 @@
 import {
   HttpException,
   HttpStatus,
-  Injectable,
+  Injectable, InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Users } from './users.entity';
-import { Repository } from 'typeorm';
+import { Connection, QueryRunner, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilesService } from '../files/files.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { PublicFile } from '../files/public-file.entity';
+import { S3 } from 'aws-sdk';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(Users)
-    private usersRepository: Repository<Users>,
+    private readonly usersRepository: Repository<Users>,
     private readonly fileService: FilesService,
+    private readonly connection: Connection,
+    private readonly configService: ConfigService,
   ) {}
 
   async getByEmail(email: string) {
@@ -74,15 +79,40 @@ export class UsersService {
   }
 
   async deleteAvatar(userId: number) {
+    const queryRunner = this.connection.createQueryRunner();
+
     const user = await this.getById(userId);
     const fileId = user.avatar?.id;
     if (fileId) {
-      await this.usersRepository.update(userId, {
-        ...user,
-        avatar: null,
-      });
-      await this.fileService.deletePublicFile(fileId);
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        await queryRunner.manager.update(Users, userId, {
+          ...user,
+          avatar: null
+        });
+      await  this.fileService.deletePublicFile(user.id);
+      await queryRunner.commitTransaction();
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        throw new InternalServerErrorException();
+      } finally {
+        await queryRunner.release();
+      }
     }
+  }
+
+  async deletePublicFileWithQueryRunner(fileId: number, queryRunner: QueryRunner) {
+    const file = await queryRunner.manager.findOne(PublicFile, { where: { id: fileId } });
+
+    const s3 = new S3();
+    await s3.deleteObject({
+      Bucket: this.configService.get('AWS_PUBLIC_BUCKET_NAME'),
+      Key: file.key,
+    }).promise();
+
+    await queryRunner.manager.delete(PublicFile, fileId);
   }
 
   async addPrivateFile(userId: number, imageBuffer: Buffer, filename: string) {
