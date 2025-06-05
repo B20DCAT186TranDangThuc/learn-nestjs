@@ -3,7 +3,7 @@ import { Post } from './post.entity';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { FindManyOptions, In, MoreThan, Repository } from 'typeorm';
 import { PostNotFoundException } from './exception/post-not-found.exception';
 import { Users } from '../users/users.entity';
 import PostsSearchService from './postsSearch.service';
@@ -17,40 +17,61 @@ export class PostsService {
     @InjectRepository(Post)
     private readonly postsRepository: Repository<Post>,
     private postsSearchService: PostsSearchService,
-  ) {
-  }
+  ) {}
 
-  getAllPosts() {
-    return this.postsRepository.createQueryBuilder('post')
-      .leftJoinAndSelect('post.author', 'author')
-      .leftJoinAndSelect('post.categories', 'categories')
-      .select([
-        'post.id',
-        'post.title',
-        'post.content',
-        'author.id',         // chỉ lấy id của author
-        'author.name',   // ví dụ lấy thêm username
-        'categories.id',       // chỉ lấy id category
-        'categories.name',
-      ])
-      .getMany()
+  async getAllPosts(offset?: number, limit?: number, startId?: number) {
+    // return this.postsRepository.createQueryBuilder('post')
+    //   .leftJoinAndSelect('post.author', 'author')
+    //   .leftJoinAndSelect('post.categories', 'categories')
+    //   .select([
+    //     'post.id',
+    //     'post.title',
+    //     'post.content',
+    //     'author.id',         // chỉ lấy id của author
+    //     'author.name',   // ví dụ lấy thêm username
+    //     'categories.id',       // chỉ lấy id category
+    //     'categories.name',
+    //   ])
+    //   .getMany()
+    const where: FindManyOptions<Post>['where'] = {};
+    let separateCount = 0;
+    if (startId) {
+      where.id = MoreThan(startId);
+      separateCount = await this.postsRepository.count();
+    }
+
+    const [items, count] = await this.postsRepository.findAndCount({
+      where,
+      relations: ['author'],
+      order: {
+        id: 'ASC',
+      },
+      skip: offset,
+      take: limit,
+    });
+
+    return {
+      items,
+      count: startId ? separateCount : count,
+    };
   }
 
   async getPostById(id: number) {
-    const post = await this.postsRepository.createQueryBuilder('post')
+    const post = await this.postsRepository
+      .createQueryBuilder('post')
       .leftJoinAndSelect('post.author', 'author')
       .leftJoinAndSelect('post.categories', 'categories')
       .select([
         'post.id',
         'post.title',
         'post.content',
-        'author.id',         // chỉ lấy id của author
-        'author.name',   // ví dụ lấy thêm username
-        'categories.id',       // chỉ lấy id category
+        'author.id', // chỉ lấy id của author
+        'author.name', // ví dụ lấy thêm username
+        'categories.id', // chỉ lấy id category
         'categories.name',
       ])
       .where('post.id = :id', { id })
-      .getOne()
+      .getOne();
     if (post) {
       return post;
     }
@@ -88,16 +109,23 @@ export class PostsService {
     await this.postsSearchService.remove(id);
   }
 
-  async searchForPosts(text: string) {
-    const results = await this.postsSearchService.search(text);
-    const ids = results.map((res) => res.id);
+  async searchForPosts(text: string, offset?: number, limit?: number, startId?: number) {
+    const { results, count } = await this.postsSearchService.search(text, offset, limit, startId);
+    const ids = results.map(result => result.id);
     if (!ids.length) {
-      return [];
+      return {
+        items: [],
+        count
+      }
     }
-    return this.postsRepository.find({
-      where: { id: In(ids) },
-      relations: ['author', 'categories'],
-    });
+    const items = await this.postsRepository
+      .find({
+        where: { id: In(ids) }
+      });
+    return {
+      items,
+      count
+    }
   }
 
   async createMultiplePosts(posts: CreatePostDto[], user: Users) {
@@ -107,11 +135,15 @@ export class PostsService {
       results.push(newPost);
     }
     if (!results.length) {
-      throw new HttpException(
-        'No posts were created',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('No posts were created', HttpStatus.BAD_REQUEST);
     }
     return results;
+  }
+
+  async getPostsWithParagraph(paragraph: string) {
+    return this.postsRepository.query(
+      'SELECT * from post WHERE $1 = ANY(paragraphs)',
+      [paragraph],
+    );
   }
 }

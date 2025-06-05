@@ -3,14 +3,13 @@ import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { PostSearchResult } from './types/post-search-result.interface';
 import { PostSearchBody } from './types/post-search-body.interface';
 import { Post } from './post.entity';
+import { PostCountResult } from './types/post-count-result.interface';
 
 @Injectable()
 export default class PostsSearchService {
-  index = 'posts'
+  index = 'posts';
 
-  constructor(
-    private readonly elasticsearchService: ElasticsearchService
-  ) {}
+  constructor(private readonly elasticsearchService: ElasticsearchService) {}
 
   async indexPost(post: Post) {
     return this.elasticsearchService.index<PostSearchResult, PostSearchBody>({
@@ -19,25 +18,68 @@ export default class PostsSearchService {
         id: post.id,
         title: post.title,
         content: post.content,
-        authorId: post.author.id
-      }
-    })
+        paragraphs: post.paragraphs,
+        authorId: post.author.id,
+      },
+    });
   }
 
-  async search(text: string) {
-    const { body } = await this.elasticsearchService.search<PostSearchResult>({
+  async count(query: string, fields: string[]) {
+    const { body } = await this.elasticsearchService.count<PostCountResult>({
       index: this.index,
       body: {
         query: {
           multi_match: {
-            query: text,
-            fields: ['title', 'content']
-          }
-        }
-      }
-    })
+            query,
+            fields,
+          },
+        },
+      },
+    });
+    return body.count;
+  }
+
+  async search(text: string, offset?: number, limit?: number, startId = 0) {
+    let separateCount = 0;
+    if (startId) {
+      separateCount = await this.count(text, ['title', 'paragraphs']);
+    }
+    const { body } = await this.elasticsearchService.search<PostSearchResult>({
+      index: this.index,
+      from: offset,
+      size: limit,
+      body: {
+        query: {
+          bool: {
+            should: {
+              multi_match: {
+                query: text,
+                fields: ['title', 'paragraphs'],
+              },
+            },
+            filter: {
+              range: {
+                id: {
+                  gt: startId,
+                },
+              },
+            },
+          },
+        },
+        sort: {
+          id: {
+            order: 'asc',
+          },
+        },
+      },
+    });
+    const count = body.hits.total.value;
     const hits = body.hits.hits;
-    return hits.map((item) => item._source);
+    const results = hits.map((item) => item._source);
+    return {
+      count: startId ? separateCount : count,
+      results,
+    };
   }
 
   async remove(postId: number) {
@@ -47,10 +89,10 @@ export default class PostsSearchService {
         query: {
           match: {
             id: postId,
-          }
-        }
-      }
-    })
+          },
+        },
+      },
+    });
   }
 
   async update(post: Post) {
@@ -58,8 +100,9 @@ export default class PostsSearchService {
       id: post.id,
       title: post.title,
       content: post.content,
-      authorId: post.author.id
-    }
+      paragraphs: post.paragraphs,
+      authorId: post.author.id,
+    };
 
     const script = Object.entries(newBody).reduce((result, [key, value]) => {
       return `${result} ctx._source.${key}='${value}';`;
@@ -71,12 +114,12 @@ export default class PostsSearchService {
         query: {
           match: {
             id: post.id,
-          }
+          },
         },
         script: {
-          inline: script
-        }
-      }
-    })
+          inline: script,
+        },
+      },
+    });
   }
 }
