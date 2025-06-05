@@ -10,6 +10,7 @@ import { Users } from './users.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilesService } from '../files/files.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -112,5 +113,18 @@ export class UsersService {
       );
     }
     throw new NotFoundException('User with this id does not exist');
+  }
+
+  async updateUser(userId: number, dto: UpdateUserDto) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+    if (user) {
+      user.name = dto.name;
+      user.address = dto.address;
+      const updatedUser = await this.usersRepository.update(userId, user);
+      return updatedUser;
+    }
+    throw new NotFoundException("User with this id does not exist");
   }
 }

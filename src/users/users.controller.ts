@@ -1,11 +1,24 @@
 
 import { UsersService } from './users.service';
-import { Controller, Get, Param, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Req,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express, Response } from 'express';
 import { JwtAuthenticationGuard } from '../authentication/jwt-authentication.guard';
 import { RequestWithUser } from '../authentication/requestWithUser.interface';
 import { FindOneParams } from '../utils/findOneParams';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -42,5 +55,14 @@ export class UsersController {
   @UseGuards(JwtAuthenticationGuard)
   async getAllPrivateFiles(@Req() request: RequestWithUser) {
     return this.usersService.getAllPrivateFiles(request.user.id);
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthenticationGuard)
+  async updateUser(
+    @Param() { id }: FindOneParams,
+    @Body() body: UpdateUserDto
+  ) {
+    return this.usersService.updateUser(Number(id), body);
   }
 }

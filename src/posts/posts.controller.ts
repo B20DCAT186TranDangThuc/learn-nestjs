@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -11,7 +22,10 @@ export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Get()
-  getAllPosts() {
+  async getPosts(@Query('search') search: string) {
+    if (search) {
+      return this.postsService.searchForPosts(search);
+    }
     return this.postsService.getAllPosts();
   }
 
@@ -34,5 +48,14 @@ export class PostsController {
   @Delete(':id')
   async deletePost(@Param('id') id: string) {
     await this.postsService.deletePost(Number(id));
+  }
+
+  @Post('bulk')
+  @UseGuards(JwtAuthenticationGuard)
+  async createMultiplePosts(
+    @Body() posts: CreatePostDto[],
+    @Req() req: RequestWithUser,
+  ) {
+    return this.postsService.createMultiplePosts(posts, req.user);
   }
 }

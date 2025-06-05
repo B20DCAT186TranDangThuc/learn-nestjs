@@ -8,12 +8,14 @@ import { UsersModule } from './users/users.module';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { CategoriesModule } from './categories/categories.module';
 import { FilesModule } from './files/files.module';
+import { SearchModule } from './search/search.module';
 import * as Joi from '@hapi/joi';
 
 @Module({
   imports: [
     PostsModule,
     ConfigModule.forRoot({
+      isGlobal: true,
       validationSchema: Joi.object({
         POSTGRES_HOST: Joi.string().required(),
         POSTGRES_PORT: Joi.number().required(),
@@ -28,6 +30,9 @@ import * as Joi from '@hapi/joi';
         AWS_PUBLIC_BUCKET_NAME: Joi.string().required(),
         AWS_PRIVATE_BUCKET_NAME: Joi.string().required(),
         PORT: Joi.number(),
+        ELASTICSEARCH_NODE: Joi.string(),
+        ELASTICSEARCH_USERNAME: Joi.string(),
+        ELASTICSEARCH_PASSWORD: Joi.string()
       }),
     }),
     DatabaseModule,
@@ -35,6 +40,7 @@ import * as Joi from '@hapi/joi';
     AuthenticationModule,
     CategoriesModule,
     FilesModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

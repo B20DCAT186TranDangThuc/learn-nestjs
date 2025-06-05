@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { TokenPayload } from './tokenPayload.interface';
+import { PostgresErrorCodes } from '../database/postgresErrorCodes.enum';
 @Injectable()
 export class AuthenticationService {
   constructor(
