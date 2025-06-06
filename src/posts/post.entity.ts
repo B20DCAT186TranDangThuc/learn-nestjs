@@ -4,11 +4,12 @@ import {
   Index,
   JoinTable,
   ManyToMany,
-  ManyToOne,
+  ManyToOne, OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Users } from '../users/users.entity';
 import { Category } from '../categories/categories.entity';
+import { Comment } from '../comments/comment.entity';
 
 @Entity()
 export class Post {
@@ -31,4 +32,7 @@ export class Post {
   @ManyToMany(() => Category, (category) => category.posts)
   @JoinTable()
   public categories: Category[];
+
+  @OneToMany(() => Comment, (comment: Comment) => comment.post)
+  public comments: Comment[];
 }

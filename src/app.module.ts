@@ -10,6 +10,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { FilesModule } from './files/files.module';
 import { SearchModule } from './search/search.module';
 import { SubscribersModule } from './subscribers/subscribers.module';
+import { CommentsModule } from './comments/comments.module';
 import * as Joi from '@hapi/joi';
 
 @Module({
@@ -51,6 +52,7 @@ import * as Joi from '@hapi/joi';
     FilesModule,
     SearchModule,
     SubscribersModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -16,7 +16,7 @@ import { UpdatePostDto } from './dto/update-post.dto';
 import { JwtAuthenticationGuard } from '../authentication/jwt-authentication.guard';
 import { FindOneParams } from '../utils/findOneParams';
 import { RequestWithUser } from '../authentication/requestWithUser.interface';
-import { PaginationParams } from '../utils/paginationParams';
+import { PaginationParams } from '../utils/types/paginationParams';
 
 @Controller('posts')
 export class PostsController {
