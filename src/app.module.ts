@@ -9,6 +9,7 @@ import { AuthenticationModule } from './authentication/authentication.module';
 import { CategoriesModule } from './categories/categories.module';
 import { FilesModule } from './files/files.module';
 import { SearchModule } from './search/search.module';
+import { SubscribersModule } from './subscribers/subscribers.module';
 import * as Joi from '@hapi/joi';
 
 @Module({
@@ -34,7 +35,9 @@ import * as Joi from '@hapi/joi';
         PORT: Joi.number(),
         ELASTICSEARCH_NODE: Joi.string(),
         ELASTICSEARCH_USERNAME: Joi.string(),
-        ELASTICSEARCH_PASSWORD: Joi.string()
+        ELASTICSEARCH_PASSWORD: Joi.string(),
+        SUBSCRIBERS_SERVICE_HOST: Joi.string(),
+        SUBSCRIBERS_SERVICE_PORT: Joi.string(),
       }),
     }),
     DatabaseModule,
@@ -43,6 +46,7 @@ import * as Joi from '@hapi/joi';
     CategoriesModule,
     FilesModule,
     SearchModule,
+    SubscribersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
