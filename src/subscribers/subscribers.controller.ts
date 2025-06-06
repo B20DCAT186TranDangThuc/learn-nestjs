@@ -1,35 +1,40 @@
 import {
+  BadRequestException,
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Get,
+  HttpException,
+  Inject,
   Post,
   UseGuards,
   UseInterceptors,
-  ClassSerializerInterceptor, Inject,
 } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { ClientGrpc } from '@nestjs/microservices';
 import { JwtAuthenticationGuard } from '../authentication/jwt-authentication.guard';
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
+import { SubscriberService } from './subscriber-service.interface';
 
 @Controller('subscribers')
 @UseInterceptors(ClassSerializerInterceptor)
 export default class SubscribersController {
-  constructor(
-    @Inject('SUBSCRIBERS_SERVICE') private subscribersService: ClientProxy,
-  ) {}
+  private subscribersService: SubscriberService;
+
+  constructor(@Inject('SUBSCRIBERS_PACKAGE') private client: ClientGrpc) {}
+
+  onModuleInit() {
+    this.subscribersService =
+      this.client.getService<SubscriberService>('SubscribersService');
+  }
 
   @Get()
   async getSubscribers() {
-    return this.subscribersService.send({
-      cmd: 'get-all-subscribers'
-    }, '')
+    return this.subscribersService.getAllSubscribers({});
   }
 
   @Post()
   @UseGuards(JwtAuthenticationGuard)
   async createPost(@Body() subscriber: CreateSubscriberDto) {
-    return this.subscribersService.send({
-      cmd: 'add-subscriber'
-    }, subscriber)
+    return await this.subscribersService.addSubscriber(subscriber);
   }
 }
