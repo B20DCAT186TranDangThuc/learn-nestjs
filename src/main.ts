@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,14 +14,11 @@ async function bootstrap() {
   const queueName = configService.get('RABBITMQ_QUEUE_NAME');
 
   await app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.RMQ,
+    transport: Transport.GRPC,
     options: {
-      urls: [`amqp://${user}:${password}@${host}`],
-      queue: queueName,
-      noAck: false,
-      queueOptions: {
-        durable: true,
-      },
+      package: 'subscribers',
+      protoPath: join(process.cwd(), 'src/subcribers/subscribers.proto'),
+      url: configService.get('GRPC_CONNECTION_URL')
     },
   });
 

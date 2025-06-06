@@ -1,0 +1,28 @@
+
+syntax = "proto3";
+
+package subscribers;
+
+
+message Subscriber {
+    int32 id = 1;
+    string email = 2;
+    string name = 3;
+}
+
+message CreateSubscriberDto {
+    string email = 1;
+    string name = 2;
+}
+
+message SubscribersResponse {
+    repeated Subscriber data = 1;
+}
+
+
+message GetAllSubscribersParams {}
+
+service SubscribersService {
+    rpc GetAllSubscribers (GetAllSubscribersParams) returns (SubscribersResponse) {}
+    rpc AddSubscriber (CreateSubscriberDto) returns (Subscriber) {}
+}
