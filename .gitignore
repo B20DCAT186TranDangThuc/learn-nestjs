@@ -401,3 +401,6 @@ dist
 
 # docker
 docker.env
+
+# rabbitmq
+rabbitmq.env
