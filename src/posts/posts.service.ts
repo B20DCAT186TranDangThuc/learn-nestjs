@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { Post } from './post.entity';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -7,6 +7,9 @@ import { FindManyOptions, In, MoreThan, Repository } from 'typeorm';
 import { PostNotFoundException } from './exception/post-not-found.exception';
 import { Users } from '../users/users.entity';
 import PostsSearchService from './postsSearch.service';
+import { CACHE_MANAGER } from '@nestjs/common/cache';
+import { Cache } from 'cache-manager';
+import { GET_POSTS_CACHE_KEY } from './postsCacheKey.constant';
 
 @Injectable()
 export class PostsService {
@@ -17,7 +20,17 @@ export class PostsService {
     @InjectRepository(Post)
     private readonly postsRepository: Repository<Post>,
     private postsSearchService: PostsSearchService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) {}
+
+  async clearCache() {
+    const keys: string[] = await this.cacheManager.store.keys();
+    keys.forEach((key) => {
+      if (key.startsWith(GET_POSTS_CACHE_KEY)) {
+        this.cacheManager.del(key);
+      }
+    })
+  }
 
   async getAllPosts(offset?: number, limit?: number, startId?: number) {
     // return this.postsRepository.createQueryBuilder('post')
@@ -86,6 +99,7 @@ export class PostsService {
     });
     if (updatedPost) {
       await this.postsSearchService.update(updatedPost);
+      await this.clearCache();
       return updatedPost;
     }
     throw new PostNotFoundException(id);
@@ -98,6 +112,7 @@ export class PostsService {
     });
     await this.postsRepository.save(newPost);
     await this.postsSearchService.indexPost(newPost);
+    await this.clearCache();
     return newPost;
   }
 
@@ -107,25 +122,35 @@ export class PostsService {
       throw new PostNotFoundException(id);
     }
     await this.postsSearchService.remove(id);
+    await this.clearCache();
   }
 
-  async searchForPosts(text: string, offset?: number, limit?: number, startId?: number) {
-    const { results, count } = await this.postsSearchService.search(text, offset, limit, startId);
-    const ids = results.map(result => result.id);
+  async searchForPosts(
+    text: string,
+    offset?: number,
+    limit?: number,
+    startId?: number,
+  ) {
+    const { results, count } = await this.postsSearchService.search(
+      text,
+      offset,
+      limit,
+      startId,
+    );
+    const ids = results.map((result) => result.id);
     if (!ids.length) {
       return {
         items: [],
-        count
-      }
+        count,
+      };
     }
-    const items = await this.postsRepository
-      .find({
-        where: { id: In(ids) }
-      });
+    const items = await this.postsRepository.find({
+      where: { id: In(ids) },
+    });
     return {
       items,
-      count
-    }
+      count,
+    };
   }
 
   async createMultiplePosts(posts: CreatePostDto[], user: Users) {

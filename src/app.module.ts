@@ -12,10 +12,15 @@ import { SearchModule } from './search/search.module';
 import { SubscribersModule } from './subscribers/subscribers.module';
 import { CommentsModule } from './comments/comments.module';
 import * as Joi from '@hapi/joi';
+import { EmailModule } from './email/email.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { EmailScheduleModule } from './email-schedule/email-schedule.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
     PostsModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
@@ -42,7 +47,12 @@ import * as Joi from '@hapi/joi';
         RABBITMQ_USER: Joi.string(),
         RABBITMQ_PASSWORD: Joi.string(),
         RABBITMQ_HOST: Joi.string(),
-        RABBITMQ_QUEUE_NAME: Joi.string()
+        RABBITMQ_QUEUE_NAME: Joi.string(),
+        REDIS_HOST: Joi.string().required(),
+        REDIS_PORT: Joi.number().required(),
+        EMAIL_SERVICE: Joi.string().required(),
+        EMAIL_USER: Joi.string().required(),
+        EMAIL_PASSWORD: Joi.string().required(),
       }),
     }),
     DatabaseModule,
@@ -53,6 +63,9 @@ import * as Joi from '@hapi/joi';
     SearchModule,
     SubscribersModule,
     CommentsModule,
+    EmailModule,
+    EmailScheduleModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

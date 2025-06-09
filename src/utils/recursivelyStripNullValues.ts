@@ -1,4 +1,4 @@
-function recursivelyStripNullValues(value: unknown): unknown {
+export function recursivelyStripNullValues(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(recursivelyStripNullValues);
   }

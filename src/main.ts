@@ -1,21 +1,24 @@
-import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import { ExceptionLoggerFilter } from './utils/exception-logger.filter';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { config } from 'aws-sdk';
+import { ExcludeNullInterceptor } from './utils/excludeNull.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new ExceptionLoggerFilter(httpAdapter));
-  app.useGlobalPipes(new ValidationPipe({
-    skipMissingProperties: true,
-  }))
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  app.use(cookieParser())
+  app.useGlobalPipes(
+    new ValidationPipe({
+      skipMissingProperties: true,
+    }),
+  );
+  app.useGlobalInterceptors(new ExcludeNullInterceptor());
+  app.use(cookieParser());
 
   const configService = app.get(ConfigService);
   config.update({
