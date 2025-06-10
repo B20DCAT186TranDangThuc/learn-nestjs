@@ -5,7 +5,7 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne, OneToMany,
-  PrimaryGeneratedColumn,
+  PrimaryGeneratedColumn, RelationId,
 } from 'typeorm';
 import { Users } from '../users/users.entity';
 import { Category } from '../categories/categories.entity';
@@ -35,4 +35,7 @@ export class Post {
 
   @OneToMany(() => Comment, (comment: Comment) => comment.post)
   public comments: Comment[];
+
+  @RelationId((post: Post) => post.author)
+  public authorId: number;
 }

@@ -32,20 +32,7 @@ export class PostsService {
     })
   }
 
-  async getAllPosts(offset?: number, limit?: number, startId?: number) {
-    // return this.postsRepository.createQueryBuilder('post')
-    //   .leftJoinAndSelect('post.author', 'author')
-    //   .leftJoinAndSelect('post.categories', 'categories')
-    //   .select([
-    //     'post.id',
-    //     'post.title',
-    //     'post.content',
-    //     'author.id',         // chỉ lấy id của author
-    //     'author.name',   // ví dụ lấy thêm username
-    //     'categories.id',       // chỉ lấy id category
-    //     'categories.name',
-    //   ])
-    //   .getMany()
+  async getAllPosts(offset?: number, limit?: number, startId?: number, options?: FindManyOptions<Post>) {
     const where: FindManyOptions<Post>['where'] = {};
     let separateCount = 0;
     if (startId) {
@@ -55,18 +42,24 @@ export class PostsService {
 
     const [items, count] = await this.postsRepository.findAndCount({
       where,
-      relations: ['author'],
       order: {
-        id: 'ASC',
+        id: 'ASC'
       },
       skip: offset,
       take: limit,
+      ...options
     });
 
     return {
       items,
-      count: startId ? separateCount : count,
-    };
+      count: startId ? separateCount : count
+    }
+  }
+
+  async getPostsWidthAuthors(offset?: number, limit?: number, startId?: number) {
+    return this.getAllPosts(offset, limit, startId, {
+      relations: ['author'],
+    })
   }
 
   async getPostById(id: number) {

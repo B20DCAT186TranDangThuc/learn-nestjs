@@ -9,6 +9,8 @@ import { CacheModule } from '@nestjs/common/cache';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import redisStore from 'cache-manager-redis-store';
 import { PostResolver } from './post.resolver';
+import { UsersModule } from '../users/users.module';
+import { PostsLoader } from './loaders/post.loader';
 
 @Module({
   imports: [
@@ -24,8 +26,9 @@ import { PostResolver } from './post.resolver';
     }),
     TypeOrmModule.forFeature([Post]),
     SearchModule,
+    UsersModule
   ],
   controllers: [PostsController],
-  providers: [PostsService, PostsSearchService, PostResolver],
+  providers: [PostsService, PostsSearchService, PostResolver, PostsLoader],
 })
 export class PostsModule {}

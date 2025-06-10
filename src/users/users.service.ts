@@ -1,13 +1,14 @@
 import {
   HttpException,
   HttpStatus,
-  Injectable, InternalServerErrorException,
+  Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Users } from './users.entity';
-import { Connection, QueryRunner, Repository } from 'typeorm';
+import { Connection, In, QueryRunner, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilesService } from '../files/files.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -90,10 +91,10 @@ export class UsersService {
       try {
         await queryRunner.manager.update(Users, userId, {
           ...user,
-          avatar: null
+          avatar: null,
         });
-      await  this.fileService.deletePublicFile(user.id);
-      await queryRunner.commitTransaction();
+        await this.fileService.deletePublicFile(user.id);
+        await queryRunner.commitTransaction();
       } catch (error) {
         await queryRunner.rollbackTransaction();
         throw new InternalServerErrorException();
@@ -103,14 +104,21 @@ export class UsersService {
     }
   }
 
-  async deletePublicFileWithQueryRunner(fileId: number, queryRunner: QueryRunner) {
-    const file = await queryRunner.manager.findOne(PublicFile, { where: { id: fileId } });
+  async deletePublicFileWithQueryRunner(
+    fileId: number,
+    queryRunner: QueryRunner,
+  ) {
+    const file = await queryRunner.manager.findOne(PublicFile, {
+      where: { id: fileId },
+    });
 
     const s3 = new S3();
-    await s3.deleteObject({
-      Bucket: this.configService.get('AWS_PUBLIC_BUCKET_NAME'),
-      Key: file.key,
-    }).promise();
+    await s3
+      .deleteObject({
+        Bucket: this.configService.get('AWS_PUBLIC_BUCKET_NAME'),
+        Key: file.key,
+      })
+      .promise();
 
     await queryRunner.manager.delete(PublicFile, fileId);
   }
@@ -156,13 +164,13 @@ export class UsersService {
       const updatedUser = await this.usersRepository.update(userId, user);
       return updatedUser;
     }
-    throw new NotFoundException("User with this id does not exist");
+    throw new NotFoundException('User with this id does not exist');
   }
 
   async setCurrentRefreshToken(refreshToken: string, userId: number) {
     const currentHashedRefreshToken = await bcrypt.hash(refreshToken, 10);
     await this.usersRepository.update(userId, {
-      currentHashedRefreshToken
+      currentHashedRefreshToken,
     });
   }
 
@@ -171,7 +179,7 @@ export class UsersService {
 
     const isRefreshMatching = await bcrypt.compare(
       refreshToken,
-      user.currentHashedRefreshToken
+      user.currentHashedRefreshToken,
     );
 
     if (isRefreshMatching) {
@@ -181,8 +189,13 @@ export class UsersService {
 
   async removeRefreshToken(userId: number) {
     return this.usersRepository.update(userId, {
-      currentHashedRefreshToken: null
+      currentHashedRefreshToken: null,
     });
   }
 
+  async getByIds(ids: number[]) {
+    return this.usersRepository.find({
+      where: { id: In(ids) },
+    });
+  }
 }
