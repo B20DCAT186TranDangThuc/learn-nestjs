@@ -20,6 +20,7 @@ import { PaginationParams } from '../utils/types/paginationParams';
 import { CacheKey } from '@nestjs/common/cache';
 import { GET_POSTS_CACHE_KEY } from './postsCacheKey.constant';
 import { HttpCacheInterceptor } from './httpCache.interceptor';
+import JwtTwoFactorGuard from '../authentication/jwt-twoFactorAuthentication.guard';
 
 @Controller('posts')
 export class PostsController {
@@ -43,7 +44,7 @@ export class PostsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthenticationGuard)
+  @UseGuards(JwtTwoFactorGuard)
   async createPost(@Body() post: CreatePostDto, @Req() req: RequestWithUser) {
     return this.postsService.createPost(post, req.user);
   }
